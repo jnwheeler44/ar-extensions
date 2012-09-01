@@ -237,6 +237,25 @@ module ActiveRecord::Extensions
       nil
     end
     
+    # Adds support for specifying in +ActiveRecord.find+ calls that
+    # certain field names should not be null.  Example:
+    #
+    #  Company.find(:all, :conditions => {:name_not_null => true})
+    #  # generates "SELECT * FROM companies WHERE companies.`name` IS NOT NULL"
+    #
+    class NotNullExt
+      NOT_NULL_RGX = /^(.+)_(not_null)$/
+
+      def self.process(key, val, caller)
+        if match_data = key.to_s.match(NOT_NULL_RGX)
+          column_name = match_data.captures[0]
+          fieldname = caller.connection.quote_column_name(column_name)
+          str = "#{caller.table_name}.#{column_name} IS NOT NULL"
+          Result.new(str, nil)
+        end
+      end
+    end
+
   end
 
   
@@ -492,7 +511,8 @@ end
   
 
   register Comparison, :adapters=>:all
-  register ArrayExt, :adapters=>:all  
+  register ArrayExt, :adapters=>:all
+  register NotNullExt, :adapters => [:mysql]
   register Like, :adapters=>:all 
   register RangeExt, :adapters=>:all  
   register MySQLRegexp, :adapters=>[ :mysql ]
